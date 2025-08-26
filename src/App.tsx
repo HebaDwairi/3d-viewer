@@ -1,83 +1,16 @@
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, useProgress, Html, useGLTF, Center } from '@react-three/drei';
-import { Suspense, useEffect, useMemo } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls, Center, useGLTF } from '@react-three/drei';
+import { Suspense, useMemo } from 'react';
 import { useControls } from 'leva';
-import { Color, Mesh } from 'three';
+import { models } from './models';
+import Model from './components/Model';
+import Loader from './components/Loader';
+import Background from './components/Background';
 
-interface ModelMap {
-  [key: string]: {
-    url: string,
-    scale: number,
-  } 
-};
-
-const models : ModelMap = {
-  'drone' : {
-    url: '/models/drone/scene.gltf',
-    scale: 0.1,
-  },
-  'chair' : {
-    url: '/models/office_chair/scene.gltf',
-    scale: 2,
-  },
-  'robot' : {
-    url: '/models/robot_a.l.e.x/scene.gltf',
-    scale: 1.5,
-  },
-}
 Object.keys(models).forEach((k) => useGLTF.preload(models[k].url));
 
-function Loader() {
-  const { progress } = useProgress();
-  return <Html center>{progress} % loaded</Html>
-}
 
-function Model({
-  options
-}: {
-  options: {
-    modelName: string
-    wireframe: boolean
-    opacity: number
-    visible: boolean,
-    scale: number
-  }
-}) {
-  const modelData = models[options.modelName]
-  
-
-  const gltf = useGLTF(modelData.url).scene;
-
-  gltf.traverse((o) => {
-    if (o instanceof Mesh) {
-      o.material.wireframe = options.wireframe
-      o.material.transparent = true
-      o.material.opacity = options.opacity
-    }
-  })
-
-  return (
-    <group
-      visible={options.visible}
-      scale={options.scale * modelData.scale}
-    >
-      <primitive object={gltf} />
-    </group>
-  )
-}
-
-const Background = ({ color }: { color : string }) => {
-  const { scene } = useThree();
-  
-  useEffect(() => {
-    scene.background = new Color(color);
-  }, [color, scene]);
-
-  return null;
-}
-
-
-function App() {
+const App = () => {
 
   const modelOpt = useMemo(() => ({
     modelName: {
@@ -125,14 +58,14 @@ function App() {
       label: 'Directional Intensity'
     },
     x: {
-      value: 0,
+      value: 1,
       min: -10,
       max: 10,
       step: 0.1,
       label: 'X Light Position'
     },
     y: {
-      value: 0,
+      value: 2,
       min: -10,
       max: 10,
       step: 0.1,
@@ -161,11 +94,14 @@ function App() {
         <Background color={sceneControls.background} />
         <OrbitControls enableDamping={true}/>
         <ambientLight args={['white', sceneControls.ambientLightIntensity]} />
-        <directionalLight args={['white', sceneControls.directionalLightIntensity]} position={[sceneControls.x, sceneControls.y, sceneControls.z]} />
+        <directionalLight 
+          args={['white', sceneControls.directionalLightIntensity]} 
+          position={[sceneControls.x, sceneControls.y, sceneControls.z]} 
+        />
         <Suspense fallback={<Loader />}>
-            <Center>
-              <Model options={modelControls} />
-            </Center>
+          <Center>
+            <Model options={modelControls} />
+          </Center>
         </Suspense>
       </Canvas>
     </div>
