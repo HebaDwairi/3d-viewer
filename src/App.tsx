@@ -1,16 +1,19 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Center, useGLTF } from '@react-three/drei';
-import { Suspense, useMemo } from 'react';
+import { OrbitControls,  useGLTF, Bvh, Bounds } from '@react-three/drei';
+import { Suspense, useMemo, useRef, useState } from 'react';
 import { useControls } from 'leva';
 import { models } from './models';
 import Model from './components/Model';
 import Loader from './components/Loader';
 import Background from './components/Background';
+import { GLTFLoader, type GLTF } from 'three/examples/jsm/Addons.js';
 
 Object.keys(models).forEach((k) => useGLTF.preload(models[k].url));
 
 
 const App = () => {
+
+  const [userModel, setUserModel] = useState<GLTF | null>(null);
 
   const modelOpt = useMemo(() => ({
     modelName: {
@@ -84,24 +87,72 @@ const App = () => {
     }
   }), []);
 
+  const annotationOpt = {
+    mode: {
+      options: ['Point', 'Line', 'Polygon'],
+      label: 'Drawing Mode',
+      value: 'Point'
+    },
+    color: {
+      label: 'Drawing Color',
+      value: 'teal'
+    }
+  };
+
   const modelControls = useControls('Model', modelOpt);
   const sceneControls = useControls('Scene', sceneOpt);
+  const annotationControls = useControls('Annotation', annotationOpt);
+console.log(annotationControls);
 
-  
+  const controls = useRef(null)
   return (
     <div className="h-screen w-screen">
-      <Canvas camera={{position: [0, 1.5, 3]}}  >
+      <input type="file" className='bg-gray-100 w-30 border-2 border-gray-300 p-2 rounded-xl' 
+        onInputCapture={(e: React.ChangeEvent<HTMLInputElement>) => {
+          if (!e.target.files || e.target.files.length === 0) {
+            return;
+          }
+          
+          const file = e.target.files[0];
+          if(!file ) return;
+          const reader = new FileReader();
+
+          reader.onload = (e) => {
+            const buffer = e.target?.result;
+            if(!buffer) return;
+
+            const loader = new GLTFLoader();
+            loader.parse(buffer, '', (gltf) => {
+            //  console.log(gltf);
+              setUserModel(gltf);
+              
+            })
+            //console.log(val);
+            
+          }
+          reader.readAsArrayBuffer(file);
+            
+        
+      }}/>
+      <Canvas  >
         <Background color={sceneControls.background} />
-        <OrbitControls enableDamping={true}/>
+        <OrbitControls enableDamping={true} ref={controls} makeDefault/>
         <ambientLight args={['white', sceneControls.ambientLightIntensity]} />
         <directionalLight 
           args={['white', sceneControls.directionalLightIntensity]} 
           position={[sceneControls.x, sceneControls.y, sceneControls.z]} 
         />
         <Suspense fallback={<Loader />}>
-          <Center>
-            <Model options={modelControls} />
-          </Center>
+          <Bounds 
+            fit 
+            clip
+            margin={1.2} 
+            onFit={() => controls.current?.update()}>
+              <Bvh firstHitOnly>
+                <Model options={modelControls} annotationOptions={annotationControls} userGltf={userModel} />
+              </Bvh>
+            
+          </Bounds>
         </Suspense>
       </Canvas>
     </div>

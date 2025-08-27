@@ -7,16 +7,20 @@ interface ModelMap {
 };
 
 export const models : ModelMap = {
+  'userModel' : {
+    url: '/models/office_chair/scene.gltf',
+    scale: 1,
+  },
   'drone' : {
     url: '/models/drone/scene.gltf',
-    scale: 0.1,
+    scale: 1,
   },
   'chair' : {
     url: '/models/office_chair/scene.gltf',
-    scale: 2,
+    scale: 1,
   },
   'robot' : {
     url: '/models/robot_a.l.e.x/scene.gltf',
-    scale: 1.5,
+    scale: 1,
   },
 }
