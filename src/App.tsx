@@ -1,12 +1,13 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls,  useGLTF, Bvh, Bounds } from '@react-three/drei';
+import { useGLTF, Bvh, Bounds } from '@react-three/drei';
 import { Suspense, useMemo, useRef, useState } from 'react';
 import { useControls } from 'leva';
 import { models } from './models';
 import Model from './components/Model';
 import Loader from './components/Loader';
-import Background from './components/Background';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/Addons.js';
+//import { OrbitControls as OrbitControlsType } from 'three-stdlib';
+import { CameraControls } from "@react-three/drei";
 
 Object.keys(models).forEach((k) => useGLTF.preload(models[k].url));
 
@@ -96,63 +97,70 @@ const App = () => {
     color: {
       label: 'Drawing Color',
       value: 'teal'
+    },
+    show: {
+      label: 'Show Annotations',
+      value: true
     }
   };
 
   const modelControls = useControls('Model', modelOpt);
   const sceneControls = useControls('Scene', sceneOpt);
   const annotationControls = useControls('Annotation', annotationOpt);
-console.log(annotationControls);
 
-  const controls = useRef(null)
+
+  const controls = useRef<CameraControls | null>(null);
+
+  const handleGLBUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) {
+      return;
+    }
+    
+    const file = e.target.files[0];
+    if(!file ) return;
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const buffer = e.target?.result;
+      if(!buffer) {
+        alert('failed to load model');
+        return;
+      };
+
+      const loader = new GLTFLoader();
+      loader.parse(buffer, '', (gltf) => {
+        setUserModel(gltf);
+        
+      })
+    }
+    reader.readAsArrayBuffer(file);
+      
+  
+}
+
   return (
     <div className="h-screen w-screen">
       <input type="file" className='bg-gray-100 w-30 border-2 border-gray-300 p-2 rounded-xl' 
-        onInputCapture={(e: React.ChangeEvent<HTMLInputElement>) => {
-          if (!e.target.files || e.target.files.length === 0) {
-            return;
-          }
-          
-          const file = e.target.files[0];
-          if(!file ) return;
-          const reader = new FileReader();
-
-          reader.onload = (e) => {
-            const buffer = e.target?.result;
-            if(!buffer) return;
-
-            const loader = new GLTFLoader();
-            loader.parse(buffer, '', (gltf) => {
-            //  console.log(gltf);
-              setUserModel(gltf);
-              
-            })
-            //console.log(val);
-            
-          }
-          reader.readAsArrayBuffer(file);
-            
-        
-      }}/>
+        onInputCapture={handleGLBUpload}/>
       <Canvas  >
-        <Background color={sceneControls.background} />
-        <OrbitControls enableDamping={true} ref={controls} makeDefault/>
+        <color attach='background' args={[sceneControls.background]}/>
+        <CameraControls ref={controls} />
         <ambientLight args={['white', sceneControls.ambientLightIntensity]} />
         <directionalLight 
           args={['white', sceneControls.directionalLightIntensity]} 
           position={[sceneControls.x, sceneControls.y, sceneControls.z]} 
         />
         <Suspense fallback={<Loader />}>
-          <Bounds 
-            fit 
-            clip
-            margin={1.2} 
-            onFit={() => controls.current?.update()}>
-              <Bvh firstHitOnly>
-                <Model options={modelControls} annotationOptions={annotationControls} userGltf={userModel} />
-              </Bvh>
-            
-          </Bounds>
+          <Bvh firstHitOnly>
+            <Bounds>
+              <Model
+                options={modelControls}
+                annotationOptions={annotationControls}
+                userGltf={userModel}
+                controlsRef={controls}
+              />
+            </Bounds>
+          </Bvh>
         </Suspense>
       </Canvas>
     </div>
