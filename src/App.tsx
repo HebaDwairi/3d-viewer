@@ -1,5 +1,5 @@
 import { Canvas } from '@react-three/fiber';
-import { useGLTF, Bvh, Bounds } from '@react-three/drei';
+import { useGLTF, Bvh, Bounds, Html } from '@react-three/drei';
 import { Suspense, useMemo, useRef, useState } from 'react';
 import { useControls } from 'leva';
 import { models } from './models';
@@ -96,7 +96,7 @@ const App = () => {
     },
     color: {
       label: 'Drawing Color',
-      value: 'teal'
+      value: '#00dee1'
     },
     show: {
       label: 'Show Annotations',
@@ -138,10 +138,10 @@ const App = () => {
   
 }
 
+
   return (
     <div className="h-screen w-screen">
-      <input type="file" className='bg-gray-100 w-30 border-2 border-gray-300 p-2 rounded-xl' 
-        onInputCapture={handleGLBUpload}/>
+      
       <Canvas  >
         <color attach='background' args={[sceneControls.background]}/>
         <CameraControls ref={controls} />
@@ -153,12 +153,34 @@ const App = () => {
         <Suspense fallback={<Loader />}>
           <Bvh firstHitOnly>
             <Bounds>
-              <Model
-                options={modelControls}
-                annotationOptions={annotationControls}
-                userGltf={userModel}
-                controlsRef={controls}
-              />
+              {
+                !userModel && modelControls.modelName === "userModel" ?
+                (
+                  <Html center 
+                    style={{
+                      fontWeight: 'bold',
+                      color: 'gray',
+                      fontSize: '1.3rem'
+                    }}
+                  >
+                    <h2 >
+                      No Model Uploaded Yet
+                    </h2>
+                    <input 
+                        type="file" 
+                        className='bg-gray-100 border-2 border-gray-300 p-2 rounded-xl w-36 mt-3' 
+                        onInputCapture={handleGLBUpload}
+                      />
+                  </Html>
+                ) : (
+                  <Model
+                    options={modelControls}
+                    annotationOptions={annotationControls}
+                    userGltf={userModel}
+                    controlsRef={controls}
+                  />
+                )
+              }
             </Bounds>
           </Bvh>
         </Suspense>
