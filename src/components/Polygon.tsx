@@ -5,11 +5,12 @@ const Polygon = ({ p, color, size } : { p: IPolygon, color: string, size: number
   const points = p.points;
   const positions = new Float32Array(points.flatMap(p => [p.x, p.y, p.z]));
 
+
   return(
-    <group>
+    <group renderOrder={10}>
       <line>
-        <lineBasicMaterial color={color} depthTest={false} depthWrite={false}/>
-        <bufferGeometry attach='geometry'>
+        <lineBasicMaterial color={color} transparent={true} opacity={1} depthTest={false}/>
+        <bufferGeometry>
           <bufferAttribute
             attach="attributes-position"
             args={[positions, 3]}
