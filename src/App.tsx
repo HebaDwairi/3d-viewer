@@ -148,7 +148,6 @@ const App = () => {
           position={[sceneControls.x, sceneControls.y, sceneControls.z]} 
         />
         <Suspense fallback={<Loader />}>
-          <Bvh firstHitOnly>
             <Bounds>
               {
                 !userModel && modelControls.modelName === "userModel" ?
@@ -170,16 +169,17 @@ const App = () => {
                       />
                   </Html>
                 ) : (
-                  <Model
-                    options={modelControls}
-                    annotationOptions={annotationControls}
-                    userGltf={userModel}
-                    controlsRef={controls}
-                  />
+                  <Bvh firstHitOnly>
+                    <Model
+                      options={modelControls}
+                      annotationOptions={annotationControls}
+                      userGltf={userModel}
+                      controlsRef={controls}
+                    />
+                  </Bvh>  
                 )
               }
             </Bounds>
-          </Bvh>
         </Suspense>
       </Canvas>
     </div>
