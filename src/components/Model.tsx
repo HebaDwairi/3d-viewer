@@ -175,7 +175,7 @@ const Model = ({
         size={dotSize}
       /> 
     }
-    <group visible={annotationOptions.show}>
+    <group visible={annotationOptions.show} >
       {
         annotations.points.map(p => 
           <Point 
@@ -196,7 +196,8 @@ const Model = ({
       }
       {
         annotations.polygons.map(p => 
-          <Polygon 
+          <Polygon
+            key={p.id} 
             p={p} 
             color={annotationOptions.color} 
             size={dotSize}

@@ -6,7 +6,6 @@ import { models } from './models';
 import Model from './components/Model';
 import Loader from './components/Loader';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/Addons.js';
-//import { OrbitControls as OrbitControlsType } from 'three-stdlib';
 import { CameraControls } from "@react-three/drei";
 
 Object.keys(models).forEach((k) => useGLTF.preload(models[k].url));
@@ -19,7 +18,7 @@ const App = () => {
   const modelOpt = useMemo(() => ({
     modelName: {
       options: Object.keys(models),
-      value: 'chair',
+      value: 'userModel',
       label: 'Model'
     },
     wireframe: {
@@ -130,19 +129,17 @@ const App = () => {
       const loader = new GLTFLoader();
       loader.parse(buffer, '', (gltf) => {
         setUserModel(gltf);
-        
-      })
+      });
     }
     reader.readAsArrayBuffer(file);
       
-  
 }
 
 
   return (
     <div className="h-screen w-screen">
       
-      <Canvas  >
+      <Canvas>
         <color attach='background' args={[sceneControls.background]}/>
         <CameraControls ref={controls} />
         <ambientLight args={['white', sceneControls.ambientLightIntensity]} />

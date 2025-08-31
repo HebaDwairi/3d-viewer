@@ -6,9 +6,9 @@ const Polygon = ({ p, color, size } : { p: IPolygon, color: string, size: number
   const positions = new Float32Array(points.flatMap(p => [p.x, p.y, p.z]));
 
   return(
-    <group key={p.id}>
+    <group>
       <line>
-        <meshBasicMaterial color={color}/>
+        <lineBasicMaterial color={color} depthTest={false} depthWrite={false}/>
         <bufferGeometry attach='geometry'>
           <bufferAttribute
             attach="attributes-position"
@@ -16,8 +16,9 @@ const Polygon = ({ p, color, size } : { p: IPolygon, color: string, size: number
           />
         </bufferGeometry>
       </line>
-      {points.map(point => (
+      {points.map((point, i) => (
         <Point 
+          key={p.id + i}
           point={point} 
           color={color} 
           size={size}
