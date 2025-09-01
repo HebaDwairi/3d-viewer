@@ -1,20 +1,13 @@
-import { CameraControls,  useBounds, useGLTF } from "@react-three/drei";
-import { Group, Mesh } from "three";
+import { CameraControls, useBounds, useGLTF } from "@react-three/drei";
+import { Group, Mesh, Vector3 } from "three";
 import { models } from "../models";
 import { useEffect, useRef, useState } from "react";
-import * as THREE from 'three'
 import type { GLTF } from "three/examples/jsm/Addons.js";
-import type { IPoint, ILine, IPolygon } from "../interfaces/shapes";
 import Point from "./Point";
 import Polygon from "./Polygon";
 import Line from "./Line";
-
-
-interface Annotations {
-  points: IPoint[],
-  lines: ILine[],
-  polygons: IPolygon[]
-};
+import { useAnnotations } from "../hooks/useAnnotations";
+import type { ShapeType } from "../contexts/AnnotationsContext";
 
 
 
@@ -34,27 +27,18 @@ const Model = ({
     color: string,
     show: boolean
   },
-  controlsRef: React.RefObject<CameraControls | null>
+  controlsRef: React.RefObject<CameraControls | null>,
 }) => {
   const modelData = models[options.modelName];
-  const [currentShape, setCurrentShape] = useState<{
-    id: number,
-    type: 'point' | 'line' | 'polygon'
-  } | null>(null);
-  const [annotations, setAnnotations] = useState<Annotations>({
-    points: [],
-    lines: [],
-    polygons: [],
-  });
-  const [mousePoint, setMousePoint] = useState<THREE.Vector3>( new THREE.Vector3(0, 0, 0));
-  
+  const { annotations, setAnnotations, addPoint, closePolygon, currentShape } = useAnnotations();
+  const [mousePoint, setMousePoint] = useState<Vector3>( new Vector3(0, 0, 0));
 
   const gltf = useGLTF(modelData.url);
   const model = userGltf && options.modelName === "userModel" ? userGltf.scene :  gltf.scene;
   
   const bounds = useBounds();
   const [dotSize, setDotSize] = useState(0);
-  
+
   
   const ref = useRef<Group | null>(null);
 
@@ -88,53 +72,8 @@ const Model = ({
 
 
     setDotSize(dotsSize);
-  }, [bounds, model]);
+  }, [bounds, model, setAnnotations]);
   
-
-
-  const [points, setPoints] = useState<THREE.Vector3[]>([]);
-
-  const drawPoint = (p: THREE.Vector3) => {
-    const point = {
-      id: Math.random(),
-      value: p
-    }
-    
-    setAnnotations(prev => ({...prev, points: [...prev.points, point]}));
-  }
-
-  const drawLine = (p: THREE.Vector3) => {
-    if(points.length === 1 && currentShape && currentShape.type === 'line') {
-      const line  = {
-        id: currentShape.id,
-        u: points[0],
-        v: p
-      }
-      setAnnotations(prev => ({...prev, lines: [...prev.lines, line]}));
-      setPoints([]);
-      setCurrentShape(null);
-    }
-    else {
-      if(!currentShape) setCurrentShape({id: Math.random(), type: 'line'});
-      setPoints([p]);
-    }
-  }
-
-  const drawPolygon = (p: THREE.Vector3, close: boolean) => {    
-    if(close && currentShape && currentShape?.type === 'polygon') {
-      const polygon : IPolygon = {
-        id : currentShape.id,
-        points: [...points, points[0]]
-      }
-      setAnnotations(prev => ({...prev, polygons: [...prev.polygons, polygon]}));
-      setPoints([]);
-      setCurrentShape(null);
-    }
-    else {
-      if(!currentShape) setCurrentShape({id: Math.random(), type: 'polygon'})
-      setPoints(points.concat(p));
-    } 
-  }
 
 
   return (
@@ -145,36 +84,33 @@ const Model = ({
       scale={options.scale * modelData.scale}
       onClick={(e) => {
         e.stopPropagation();
-
-        switch(annotationOptions.mode) {
-          case 'Point': drawPoint(e.point); break;
-          case 'Line': drawLine(e.point); break;
-          case 'Polygon': drawPolygon(e.point, false); break;
-        }
+         addPoint(e.point, annotationOptions.mode as ShapeType);
       }}
       onDoubleClick={(e) => {
-        if(currentShape?.type === 'polygon') {
-          drawPolygon(e.point, true);
-        }
+        e.stopPropagation();
+        closePolygon();
       }}
       onPointerMove={(e) => {
+        e.stopPropagation();
         setMousePoint(e.point);
       }}
     >
-      
       <primitive object={modelClone} />
     </group>
     {
       currentShape && 
       <Polygon  
+        key={'temp'}
         p={{ 
           id: -1,
-          points: [...points, mousePoint] 
+          points: [...currentShape.points, mousePoint] 
         }} 
         color='#f1ff2c' 
         size={dotSize}
+        disableEvents={true}
       /> 
     }
+
     <group visible={annotationOptions.show} >
       {
         annotations.points.map(p => 

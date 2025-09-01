@@ -1,4 +1,4 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas} from '@react-three/fiber';
 import { useGLTF, Bvh, Bounds, Html } from '@react-three/drei';
 import { Suspense, useMemo, useRef, useState } from 'react';
 import { useControls } from 'leva';
@@ -7,13 +7,21 @@ import Model from './components/Model';
 import Loader from './components/Loader';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/Addons.js';
 import { CameraControls } from "@react-three/drei";
+import type { ILine, IPoint, IPolygon } from './interfaces/shapes';
+import { useAnnotations } from './hooks/useAnnotations';
 
 Object.keys(models).forEach((k) => useGLTF.preload(models[k].url));
 
+export interface Annotations {
+  points: IPoint[],
+  lines: ILine[],
+  polygons: IPolygon[]
+};
 
 const App = () => {
 
   const [userModel, setUserModel] = useState<GLTF | null>(null);
+  const { menu, setMenu, deleteAnnotation } = useAnnotations();
 
   const modelOpt = useMemo(() => ({
     modelName: {
@@ -89,9 +97,9 @@ const App = () => {
 
   const annotationOpt = {
     mode: {
-      options: ['Point', 'Line', 'Polygon'],
+      options: ['point', 'line', 'polygon'],
       label: 'Drawing Mode',
-      value: 'Point'
+      value: 'point'
     },
     color: {
       label: 'Drawing Color',
@@ -136,10 +144,15 @@ const App = () => {
 }
 
 
+
+
   return (
     <div className="h-screen w-screen">
       
-      <Canvas>
+      <Canvas onClick={() => {
+        if(menu.open) setMenu({...menu, open: false});
+      }}
+      >
         <color attach='background' args={[sceneControls.background]}/>
         <CameraControls ref={controls} />
         <ambientLight args={['white', sceneControls.ambientLightIntensity]} />
@@ -182,6 +195,25 @@ const App = () => {
             </Bounds>
         </Suspense>
       </Canvas>
+      {
+        menu.open && 
+        <div style={{
+          position: 'absolute',
+          top: menu.position.y - 10,
+          left: menu.position.x + 10,
+          zIndex: 100,
+          
+        }}
+        className='bg-gray-200 rounded text-gray-500 p-0 border-2 border-gray-300'
+        >
+          
+          <button className='border-b-1 border-gray-300 py-2 p-1 hover:bg-gray-400 hover:text-white rounded transition-colors'
+            onClick={() => {
+              deleteAnnotation(menu.selectedObject);
+              setMenu({...menu, open: false});
+            }}>Delete</button>
+        </div>
+      }
     </div>
   )
 }
