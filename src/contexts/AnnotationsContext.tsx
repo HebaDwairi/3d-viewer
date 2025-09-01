@@ -1,7 +1,7 @@
 
 import { createContext, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Vector2, type Vector3 } from 'three';
-import type { Annotations } from '../App';
+import type { Annotations } from '../interfaces/shapes';
 
 interface ContextMenu {
   open: boolean,
@@ -16,7 +16,6 @@ interface AnnotationsContextType {
   setAnnotations: Dispatch<SetStateAction<Annotations>>,
   menu: ContextMenu,
   setMenu: Dispatch<SetStateAction<ContextMenu>>,
-  startShape: (type: ShapeType) => void,
   addPoint: (p: Vector3, type: ShapeType) => void,
   closePolygon: () => void,
   deleteAnnotation: (id: number) => void,
@@ -153,7 +152,6 @@ export const AnnotationsContextProvider = ({ children }: { children: ReactNode }
         isDrawing,
         addPoint,
         closePolygon, 
-        startShape,
         currentShape,
         deleteAnnotation
       }}

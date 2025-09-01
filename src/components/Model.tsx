@@ -81,7 +81,7 @@ const Model = ({
     <group
       ref={ref}
       visible={options.visible}
-      scale={options.scale * modelData.scale}
+      scale={options.scale}
       onClick={(e) => {
         e.stopPropagation();
          addPoint(e.point, annotationOptions.mode as ShapeType);
@@ -111,7 +111,7 @@ const Model = ({
       /> 
     }
 
-    <group visible={annotationOptions.show} >
+    <group visible={annotationOptions.show}>
       {
         annotations.points.map(p => 
           <Point 

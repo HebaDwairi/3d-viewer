@@ -15,3 +15,9 @@ export interface IPoint {
   id: number,
   value: Vector3
 }
+
+export interface Annotations {
+  points: IPoint[],
+  lines: ILine[],
+  polygons: IPolygon[]
+};

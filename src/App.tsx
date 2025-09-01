@@ -1,27 +1,28 @@
 import { Canvas} from '@react-three/fiber';
 import { useGLTF, Bvh, Bounds, Html } from '@react-three/drei';
-import { Suspense, useMemo, useRef, useState } from 'react';
-import { useControls } from 'leva';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { button, useControls } from 'leva';
 import { models } from './models';
 import Model from './components/Model';
 import Loader from './components/Loader';
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/Addons.js';
 import { CameraControls } from "@react-three/drei";
-import type { ILine, IPoint, IPolygon } from './interfaces/shapes';
 import { useAnnotations } from './hooks/useAnnotations';
+import { exportJson } from './utils/exportJson';
+import { importJson } from './utils/importJson';
 
 Object.keys(models).forEach((k) => useGLTF.preload(models[k].url));
 
-export interface Annotations {
-  points: IPoint[],
-  lines: ILine[],
-  polygons: IPolygon[]
-};
 
 const App = () => {
 
   const [userModel, setUserModel] = useState<GLTF | null>(null);
-  const { menu, setMenu, deleteAnnotation } = useAnnotations();
+  const { menu, setMenu, deleteAnnotation, annotations, setAnnotations } = useAnnotations();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const annotationsRef = useRef(annotations);
+  useEffect(() => {
+    annotationsRef.current = annotations;
+  }, [annotations]);
 
   const modelOpt = useMemo(() => ({
     modelName: {
@@ -108,7 +109,13 @@ const App = () => {
     show: {
       label: 'Show Annotations',
       value: true
-    }
+    },
+    export: button(() => {
+      exportJson(annotationsRef.current);
+    }),
+    import: button(() => {
+      fileRef.current?.click();
+    }),
   };
 
   const modelControls = useControls('Model', modelOpt);
@@ -161,38 +168,38 @@ const App = () => {
           position={[sceneControls.x, sceneControls.y, sceneControls.z]} 
         />
         <Suspense fallback={<Loader />}>
-            <Bounds>
-              {
-                !userModel && modelControls.modelName === "userModel" ?
-                (
-                  <Html center 
-                    style={{
-                      fontWeight: 'bold',
-                      color: 'gray',
-                      fontSize: '1.3rem'
-                    }}
-                  >
-                    <h2 >
-                      No Model Uploaded Yet
-                    </h2>
-                    <input 
-                        type="file" 
-                        className='bg-gray-100 border-2 border-gray-300 p-2 rounded-xl w-36 mt-3' 
-                        onInputCapture={handleGLBUpload}
-                      />
-                  </Html>
-                ) : (
-                  <Bvh firstHitOnly>
-                    <Model
-                      options={modelControls}
-                      annotationOptions={annotationControls}
-                      userGltf={userModel}
-                      controlsRef={controls}
+          <Bounds>
+            {
+              !userModel && modelControls.modelName === "userModel" ?
+              (
+                <Html center 
+                  style={{
+                    fontWeight: 'bold',
+                    color: 'gray',
+                    fontSize: '1.3rem'
+                  }}
+                >
+                  <h2 >
+                    No Model Uploaded Yet
+                  </h2>
+                  <input 
+                      type="file" 
+                      className='bg-gray-100 border-2 border-gray-300 p-2 rounded-xl w-36 mt-3' 
+                      onInputCapture={handleGLBUpload}
                     />
-                  </Bvh>  
-                )
-              }
-            </Bounds>
+                </Html>
+              ) : (
+                <Bvh firstHitOnly>
+                  <Model
+                    options={modelControls}
+                    annotationOptions={annotationControls}
+                    userGltf={userModel}
+                    controlsRef={controls}
+                  />
+                </Bvh>  
+              )
+            }
+          </Bounds>
         </Suspense>
       </Canvas>
       {
@@ -214,6 +221,18 @@ const App = () => {
             }}>Delete</button>
         </div>
       }
+      <input 
+        hidden
+        
+        onChange={(e) => {
+          const data = importJson(e);
+          //console.log(data);
+          
+          setAnnotations(data);
+        }}
+        ref={fileRef}
+        type='file'
+      />
     </div>
   )
 }
