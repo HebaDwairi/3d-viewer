@@ -1,11 +1,10 @@
 import { CameraControls, useBounds, useGLTF } from "@react-three/drei";
-import { Group, Mesh, Vector3 } from "three";
+import { Box3, Group, Mesh, Vector3 } from "three";
 import { models } from "../models";
 import { useEffect, useRef, useState } from "react";
 import type { GLTF } from "three/examples/jsm/Addons.js";
 import Point from "./Point";
 import Polygon from "./Polygon";
-import Line from "./Line";
 import { useAnnotations } from "../hooks/useAnnotations";
 import type { ShapeType } from "../contexts/AnnotationsContext";
 
@@ -30,7 +29,7 @@ const Model = ({
   controlsRef: React.RefObject<CameraControls | null>,
 }) => {
   const modelData = models[options.modelName];
-  const { annotations, setAnnotations, addPoint, closePolygon, currentShape } = useAnnotations();
+  const { annotations, setAnnotations, addPoint, closeShape, currentShape } = useAnnotations();
   const [mousePoint, setMousePoint] = useState<Vector3>( new Vector3(0, 0, 0));
 
   const gltf = useGLTF(modelData.url);
@@ -66,8 +65,9 @@ const Model = ({
       polygons: [],
     });
 
-    bounds.refresh(model);
-    const size = bounds.getSize().size;
+    const bbox = new Box3().setFromObject(model);
+    const size = new Vector3();
+    bbox.getSize(size);
     const dotsSize = Math.abs(Math.log(size.x * size.y * size.z ))* 0.01;
 
 
@@ -88,7 +88,7 @@ const Model = ({
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
-        closePolygon();
+        closeShape();
       }}
       onPointerMove={(e) => {
         e.stopPropagation();
@@ -123,9 +123,9 @@ const Model = ({
       }
       {
         annotations.lines.map(l => 
-          <Line 
+          <Polygon 
             key={l.id}
-            l={l}
+            p={l}
             color={annotationOptions.color} 
             size={dotSize}
           />)

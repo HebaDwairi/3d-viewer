@@ -18,6 +18,6 @@ export interface IPoint {
 
 export interface Annotations {
   points: IPoint[],
-  lines: ILine[],
+  lines: IPolygon[],
   polygons: IPolygon[]
 };

@@ -16,6 +16,8 @@ const Polygon = (
   }) => {
 
   const { setMenu } = useAnnotations();
+
+  
   return(
     <group 
       renderOrder={10} 
@@ -43,13 +45,17 @@ const Polygon = (
         depthTest={false}
       />
       
-      {p.points.map((point, i) => (
-        <Point 
-          key={p.id + i + 1}
-          point={point} 
-          color={color} 
-          size={size}
-        />))
+      {p.points.map((point, i) => {
+        return <>
+          <Point 
+            key={p.id + i + 1}
+            point={point} 
+            color={color} 
+            size={size}
+          />
+        </>
+      })
+        
       }
     </group>
   );

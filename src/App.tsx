@@ -1,5 +1,5 @@
 import { Canvas} from '@react-three/fiber';
-import { useGLTF, Bvh, Bounds, Html } from '@react-three/drei';
+import { useGLTF, Bvh, Html } from '@react-three/drei';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { button, useControls } from 'leva';
 import { models } from './models';
@@ -168,38 +168,36 @@ const App = () => {
           position={[sceneControls.x, sceneControls.y, sceneControls.z]} 
         />
         <Suspense fallback={<Loader />}>
-          <Bounds>
-            {
-              !userModel && modelControls.modelName === "userModel" ?
-              (
-                <Html center 
-                  style={{
-                    fontWeight: 'bold',
-                    color: 'gray',
-                    fontSize: '1.3rem'
-                  }}
-                >
-                  <h2 >
-                    No Model Uploaded Yet
-                  </h2>
-                  <input 
-                      type="file" 
-                      className='bg-gray-100 border-2 border-gray-300 p-2 rounded-xl w-36 mt-3' 
-                      onInputCapture={handleGLBUpload}
-                    />
-                </Html>
-              ) : (
-                <Bvh firstHitOnly>
-                  <Model
-                    options={modelControls}
-                    annotationOptions={annotationControls}
-                    userGltf={userModel}
-                    controlsRef={controls}
+          {
+            !userModel && modelControls.modelName === "userModel" ?
+            (
+              <Html center 
+                style={{
+                  fontWeight: 'bold',
+                  color: 'gray',
+                  fontSize: '1.3rem'
+                }}
+              >
+                <h2 >
+                  No Model Uploaded Yet
+                </h2>
+                <input 
+                    type="file" 
+                    className='bg-gray-100 border-2 border-gray-300 p-2 rounded-xl w-36 mt-3' 
+                    onInputCapture={handleGLBUpload}
                   />
-                </Bvh>  
-              )
-            }
-          </Bounds>
+              </Html>
+            ) : (
+              <Bvh firstHitOnly>
+                <Model
+                  options={modelControls}
+                  annotationOptions={annotationControls}
+                  userGltf={userModel}
+                  controlsRef={controls}
+                />
+              </Bvh>  
+            )
+          }
         </Suspense>
       </Canvas>
       {
@@ -223,10 +221,8 @@ const App = () => {
       }
       <input 
         hidden
-        
         onChange={(e) => {
           const data = importJson(e);
-          //console.log(data);
           
           setAnnotations(data);
         }}

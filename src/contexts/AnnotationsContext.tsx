@@ -17,7 +17,7 @@ interface AnnotationsContextType {
   menu: ContextMenu,
   setMenu: Dispatch<SetStateAction<ContextMenu>>,
   addPoint: (p: Vector3, type: ShapeType) => void,
-  closePolygon: () => void,
+  closeShape: () => void,
   deleteAnnotation: (id: number) => void,
   isDrawing: boolean,
   currentShape: {
@@ -95,16 +95,16 @@ export const AnnotationsContextProvider = ({ children }: { children: ReactNode }
           ...curr,
           points: updatedPoints
         });
-        if(updatedPoints.length === 2){
-          const line  = {
-            id: curr.id,
-            u: updatedPoints[0],
-            v: updatedPoints[1]
-          }
-          setAnnotations(prev => ({...prev, lines: [...prev.lines, line]}));
-          setIsDrawing(false);
-          setCurrentShape(null);    
-        }
+        // if(updatedPoints.length === 2){
+        //   const line  = {
+        //     id: curr.id,
+        //     u: updatedPoints[0],
+        //     v: updatedPoints[1]
+        //   }
+        //   setAnnotations(prev => ({...prev, lines: [...prev.lines, line]}));
+        //   setIsDrawing(false);
+        //   setCurrentShape(null);    
+        // }
         break;
       }
       case 'polygon': {
@@ -117,16 +117,25 @@ export const AnnotationsContextProvider = ({ children }: { children: ReactNode }
     }
   }
 
-  const closePolygon = () => {
-    if(currentShape?.type !== 'polygon') {
-      throw new Error('Current shape is not a polygon');
+  const closeShape = () => {
+    if(!currentShape || !['line', 'polygon'].includes(currentShape.type)) {
+      return;
     }
 
-    const polygon = {
-      id : currentShape.id,
-      points: [...currentShape.points, currentShape.points[0]]
+    if(currentShape.type === 'polygon') {
+      const polygon = {
+        id : currentShape.id,
+        points: [...currentShape.points, currentShape.points[0]]
+      }
+      setAnnotations(prev => ({...prev, polygons: [...prev.polygons, polygon]}));
     }
-    setAnnotations(prev => ({...prev, polygons: [...prev.polygons, polygon]}));
+    else {
+      const line = {
+        id : currentShape.id,
+        points: currentShape.points
+      }
+      setAnnotations(prev => ({...prev, lines: [...prev.lines, line]}));
+    }
 
     setIsDrawing(false);
     setCurrentShape(null);
@@ -151,7 +160,7 @@ export const AnnotationsContextProvider = ({ children }: { children: ReactNode }
         setAnnotations,
         isDrawing,
         addPoint,
-        closePolygon, 
+        closeShape, 
         currentShape,
         deleteAnnotation
       }}
