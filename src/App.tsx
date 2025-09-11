@@ -1,15 +1,17 @@
-import { Canvas} from '@react-three/fiber';
+import { Canvas, useThree} from '@react-three/fiber';
 import { useGLTF, Bvh, Html } from '@react-three/drei';
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { button, useControls } from 'leva';
 import { models } from './models';
 import Model from './components/Model';
 import Loader from './components/Loader';
-import { GLTFLoader, type GLTF } from 'three/examples/jsm/Addons.js';
+import { DRACOLoader, GLTFLoader, KTX2Loader, type GLTF } from 'three/examples/jsm/Addons.js';
 import { CameraControls } from "@react-three/drei";
 import { useAnnotations } from './hooks/useAnnotations';
 import { exportJson } from './utils/exportJson';
 import { importJson } from './utils/importJson';
+import { REVISION, WebGLRenderer, type Group } from 'three';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 Object.keys(models).forEach((k) => useGLTF.preload(models[k].url));
 
@@ -98,7 +100,7 @@ const App = () => {
 
   const annotationOpt = {
     mode: {
-      options: ['point', 'line', 'polygon'],
+      options: ['point', 'line', 'polygon', 'none'],
       label: 'Drawing Mode',
       value: 'point'
     },
@@ -124,8 +126,9 @@ const App = () => {
 
 
   const controls = useRef<CameraControls | null>(null);
+  const GLTFRef = useRef<Group | null>(null);
 
-  const handleGLBUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGLBUpload = (e: React.ChangeEvent<HTMLInputElement>, gl: WebGLRenderer) => {
     if (!e.target.files || e.target.files.length === 0) {
       return;
     }
@@ -141,10 +144,22 @@ const App = () => {
         return;
       };
 
+      const THREE_PATH = `https://unpkg.com/three@0.${REVISION}.x`;
+
       const loader = new GLTFLoader();
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath( `${THREE_PATH}/examples/jsm/libs/draco/` );
+      const ktx2Loader = new KTX2Loader();
+      ktx2Loader.setTranscoderPath( `${THREE_PATH}/examples/jsm/libs/basis/` );
+      ktx2Loader.detectSupport(gl);
+      loader.setDRACOLoader( dracoLoader );
+      loader.setKTX2Loader( ktx2Loader );
+      loader.setMeshoptDecoder( MeshoptDecoder );
       loader.parse(buffer, '', (gltf) => {
         setUserModel(gltf);
-      });
+        GLTFRef.current = gltf.scene
+      }, (e) =>(console.log(e)
+      ));
     }
     reader.readAsArrayBuffer(file);
       
@@ -152,13 +167,18 @@ const App = () => {
 
 
 
-
   return (
     <div className="h-screen w-screen">
       
-      <Canvas onClick={() => {
-        if(menu.open) setMenu({...menu, open: false});
-      }}
+      <Canvas 
+        onClick={() => {
+          if(menu.open) setMenu({...menu, open: false});
+        }}
+        camera={{
+          fov: 60,
+          near: 0.1,
+          far: 1000000,
+        }}
       >
         <color attach='background' args={[sceneControls.background]}/>
         <CameraControls ref={controls} />
@@ -171,22 +191,7 @@ const App = () => {
           {
             !userModel && modelControls.modelName === "userModel" ?
             (
-              <Html center 
-                style={{
-                  fontWeight: 'bold',
-                  color: 'gray',
-                  fontSize: '1.3rem'
-                }}
-              >
-                <h2 >
-                  No Model Uploaded Yet
-                </h2>
-                <input 
-                    type="file" 
-                    className='bg-gray-100 border-2 border-gray-300 p-2 rounded-xl w-36 mt-3' 
-                    onInputCapture={handleGLBUpload}
-                  />
-              </Html>
+              <ModelUpload handleGLBUpload={handleGLBUpload}/>
             ) : (
               <Bvh firstHitOnly>
                 <Model
@@ -194,6 +199,7 @@ const App = () => {
                   annotationOptions={annotationControls}
                   userGltf={userModel}
                   controlsRef={controls}
+                  GLTFRef={GLTFRef}
                 />
               </Bvh>  
             )
@@ -207,7 +213,6 @@ const App = () => {
           top: menu.position.y - 10,
           left: menu.position.x + 10,
           zIndex: 100,
-          
         }}
         className='bg-gray-200 rounded text-gray-500 p-0 border-2 border-gray-300'
         >
@@ -229,11 +234,32 @@ const App = () => {
         ref={fileRef}
         type='file'
       />
+      
     </div>
   )
 }
 
-
+const ModelUpload = ({handleGLBUpload} : {
+  handleGLBUpload: (e: React.ChangeEvent<HTMLInputElement>, gl: WebGLRenderer) => void;
+}) => {
+  const {gl} = useThree();
+  return <Html center 
+    style={{
+      fontWeight: 'bold',
+      color: 'gray',
+      fontSize: '1.3rem'
+    }}
+  >
+    <h2 >
+      No Model Uploaded Yet
+    </h2>
+    <input 
+        type="file" 
+        className='bg-gray-100 border-2 border-gray-300 p-2 rounded-xl w-36 mt-3' 
+        onChange={(e) => {handleGLBUpload(e, gl)}}
+      />
+  </Html>
+}
 
 
 export default App;

@@ -1,17 +1,17 @@
-import { CameraControls, useBounds, useGLTF } from "@react-three/drei";
+import { CameraControls } from "@react-three/drei";
 import { Box3, Group, Mesh, Vector3 } from "three";
 import { models } from "../models";
-import { useEffect, useRef, useState } from "react";
-import type { GLTF } from "three/examples/jsm/Addons.js";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { type GLTF } from "three/examples/jsm/Addons.js";
 import Point from "./Point";
 import Polygon from "./Polygon";
 import { useAnnotations } from "../hooks/useAnnotations";
 import type { ShapeType } from "../contexts/AnnotationsContext";
-
-
+import { useGLTFLoader } from "../hooks/useGltfLoader";
+import type { ThreeEvent } from "@react-three/fiber";
 
 const Model = ({
-  options, userGltf, annotationOptions, controlsRef
+  options, userGltf, annotationOptions, controlsRef, GLTFRef
 }: {
   options: {
     modelName: string
@@ -27,38 +27,52 @@ const Model = ({
     show: boolean
   },
   controlsRef: React.RefObject<CameraControls | null>,
+  GLTFRef: React.RefObject<Group | null>,
 }) => {
   const modelData = models[options.modelName];
   const { annotations, setAnnotations, addPoint, closeShape, currentShape } = useAnnotations();
-  const [mousePoint, setMousePoint] = useState<Vector3>( new Vector3(0, 0, 0));
-
-  const gltf = useGLTF(modelData.url);
-  const model = userGltf && options.modelName === "userModel" ? userGltf.scene :  gltf.scene;
-  
-  const bounds = useBounds();
+  const [mousePoint, setMousePoint] = useState<Vector3>(new Vector3(0, 0, 0));
   const [dotSize, setDotSize] = useState(0);
 
+  const { gltf } = useGLTFLoader(modelData.url);
   
+
+  const model = useMemo(() => {
+    const scene = userGltf && options.modelName === "userModel" ? userGltf.scene : gltf.scene;
+    return scene.clone();
+  }, [gltf.scene, userGltf, options.modelName]);
+
   const ref = useRef<Group | null>(null);
 
-  useEffect(() => {
-    if (ref.current && controlsRef) {
-      controlsRef.current?.fitToBox(ref.current, true);
-    }
-  }, [ref, model, controlsRef]);
 
-  const modelClone = model.clone();
   useEffect(() => {
-    modelClone.traverse((o) => {
+    if (!model) return;
+
+    model.traverse((o) => {
       if (o instanceof Mesh) {
-        o.material.wireframe = options.wireframe;
-        o.material.transparent = true;
-        o.material.opacity = options.opacity;
+        if (o.material.wireframe !== options.wireframe) {
+          o.material.wireframe = options.wireframe;
+        }
+        if (o.material.opacity !== options.opacity) {
+          o.material.transparent = options.opacity < 1;
+          o.material.opacity = options.opacity;
+        }
+        o.material.needsUpdate = true;
       }
     });
-  }, [modelClone, options.opacity, options.wireframe]);
+  }, [model, options.wireframe, options.opacity]);
+
 
   useEffect(() => {
+    if (ref.current && controlsRef.current && model) {
+        controlsRef.current?.fitToBox(ref.current!, true);
+    }
+  }, [model, controlsRef]);
+
+
+  useEffect(() => {
+    if (!model) return;
+    
     setAnnotations({
       points: [],
       lines: [],
@@ -68,83 +82,90 @@ const Model = ({
     const bbox = new Box3().setFromObject(model);
     const size = new Vector3();
     bbox.getSize(size);
-    const dotsSize = Math.abs(Math.log(size.x * size.y * size.z ))* 0.01;
-
-
+    const dotsSize = Math.abs(Math.log(size.x * size.y * size.z)) * 0.01;
     setDotSize(dotsSize);
-  }, [bounds, model, setAnnotations]);
-  
+  }, [model, setAnnotations]);
 
+
+  const handleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    if (annotationOptions.mode === 'none') return;
+    addPoint(e.point, annotationOptions.mode as ShapeType);
+  }, [annotationOptions.mode, addPoint]);
+
+  const handleDoubleClick = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    if (annotationOptions.mode === 'none') return;
+    closeShape();
+  }, [annotationOptions.mode, closeShape]);
+
+  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    if (annotationOptions.mode === 'none') return;
+    setMousePoint(e.point);
+  }, [annotationOptions.mode]);
+
+
+  const renderedAnnotations = useMemo(() => (
+    <group visible={annotationOptions.show}>
+      {annotations.points.map(p => 
+        <Point 
+          key={p.id} 
+          point={p.value} 
+          color={annotationOptions.color} 
+          size={dotSize}
+        />
+      )}
+      {annotations.lines.map(l => 
+        <Polygon 
+          key={l.id}
+          p={l}
+          color={annotationOptions.color} 
+          size={dotSize}
+        />
+      )}
+      {annotations.polygons.map(p => 
+        <Polygon
+          key={p.id} 
+          p={p} 
+          color={annotationOptions.color} 
+          size={dotSize}
+        />
+      )}
+    </group>
+  ), [annotations, annotationOptions.show, annotationOptions.color, dotSize]);
+
+  if (!model) return null;
 
   return (
     <>
-    <group
-      ref={ref}
-      visible={options.visible}
-      scale={options.scale}
-      onClick={(e) => {
-        e.stopPropagation();
-         addPoint(e.point, annotationOptions.mode as ShapeType);
-      }}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        closeShape();
-      }}
-      onPointerMove={(e) => {
-        e.stopPropagation();
-        setMousePoint(e.point);
-      }}
-    >
-      <primitive object={modelClone} />
-    </group>
-    {
-      currentShape && 
-      <Polygon  
-        key={'temp'}
-        p={{ 
-          id: -1,
-          points: [...currentShape.points, mousePoint] 
-        }} 
-        color='#f1ff2c' 
-        size={dotSize}
-        disableEvents={true}
-      /> 
-    }
+      <group
+        ref={ref}
+        visible={options.visible}
+        scale={options.scale}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onPointerMove={handlePointerMove}
+      >
+        <primitive object={model} ref={GLTFRef} />
+      </group>
+      
+      {currentShape && (
+        <Polygon  
+          key={'temp'}
+          p={{ 
+            id: -1,
+            points: [...currentShape.points, mousePoint] 
+          }} 
+          color='#f1ff2c' 
+          size={dotSize}
+          disableEvents={true}
+        /> 
+      )}
 
-    <group visible={annotationOptions.show}>
-      {
-        annotations.points.map(p => 
-          <Point 
-            key={p.id} 
-            point={p.value} 
-            color={annotationOptions.color} 
-            size={dotSize}
-          />)
-      }
-      {
-        annotations.lines.map(l => 
-          <Polygon 
-            key={l.id}
-            p={l}
-            color={annotationOptions.color} 
-            size={dotSize}
-          />)
-      }
-      {
-        annotations.polygons.map(p => 
-          <Polygon
-            key={p.id} 
-            p={p} 
-            color={annotationOptions.color} 
-            size={dotSize}
-          />
-        )
-      }
-    </group>
+      {renderedAnnotations}
     </>
-  )
-}
-
-
+  );
+};
 
 export default Model;
